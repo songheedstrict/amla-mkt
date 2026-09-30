@@ -367,7 +367,9 @@ a{color:var(--accent)}
 /* ───────── 설정 ───────── */
 var SHEET_ID = '10Weg7_ZJBTUlsefyPoBajsVawX9M1Uka-lscx4bh7SQ';
 var GID = '0';
-var CSV_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&gid=' + GID;
+/* 기본: 일반 CSV 내보내기(시트 그대로). 예비: gviz CSV(글자가 적은 날짜 열의 내용을 빠뜨릴 수 있음) */
+var CSV_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/export?format=csv&gid=' + GID;
+var CSV_URL_FALLBACK = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&gid=' + GID;
 var SHEET_LINK = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit#gid=' + GID;
 var REFRESH_MS = 5 * 60 * 1000;
 var DEFAULT_YEAR = 2026;
@@ -446,13 +448,19 @@ function loadRows(){
   }
   return loadViaCSV();
 }
-function loadViaCSV(){
-  return fetch(CSV_URL + '&_=' + Date.now(), {cache:'no-store'}).then(function(r){
+function fetchCSVFrom(url){
+  return fetch(url + '&_=' + Date.now(), {cache:'no-store'}).then(function(r){
     if(!r.ok) throw new Error('HTTP '+r.status);
     return r.text();
   }).then(function(t){
     if(/^\s*</.test(t)) throw new Error('시트가 공개되어 있지 않습니다 (공유: 링크가 있는 모든 사용자 – 뷰어 필요)');
     return parseCSV(t);
+  });
+}
+function loadViaCSV(){
+  return fetchCSVFrom(CSV_URL).catch(function(e1){
+    console.warn('CSV 내보내기 실패, gviz로 재시도:', e1);
+    return fetchCSVFrom(CSV_URL_FALLBACK);
   });
 }
 
